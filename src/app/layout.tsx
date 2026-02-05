@@ -1,29 +1,42 @@
-// src/app/layout.tsx completo
-import './globals.css'
-import { Inter } from 'next/font/google'
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import Navbar from "@/components/navbar";
 import { Toaster } from "sonner";
 
-// Añadimos display: 'swap' y fallback
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  adjustFontFallback: false // Esto ayuda si hay problemas de timeout
-})
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: 'Plataforma E-learning',
-  description: 'Aprende programación con proyectos reales',
-}
+export const metadata: Metadata = {
+  title: "DevAcademy - Plataforma de E-learning",
+  description: "Aprende programación con los mejores cursos prácticos.",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="dark">
-      <body className={inter.className}>{children}</body>
-      <Toaster position="bottom-right" richColors theme="dark" />
+    <html lang="es" className="dark" style={{ colorScheme: 'dark' }}>
+      <body className={`${inter.className} bg-black text-white antialiased`}>
+        {/* El Navbar es 'fixed', por lo que no ocupa espacio en el flujo. 
+            Todas las páginas deberán tener un padding superior (ej. pt-20) 
+            para que el contenido no quede debajo del Navbar.
+        */}
+        <Navbar />
+        
+        <main>
+          {children}
+        </main>
+
+        {/* Notificaciones globales (Toast) */}
+        <Toaster 
+          position="bottom-right" 
+          richColors 
+          theme="dark" 
+          closeButton
+        />
+      </body>
     </html>
-  )
+  );
 }
