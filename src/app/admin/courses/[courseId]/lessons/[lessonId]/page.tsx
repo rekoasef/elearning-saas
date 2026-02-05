@@ -1,15 +1,14 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
+import { EditLessonForm } from "./edit-lesson-form"; // Componente que crearemos abajo
+import { ArrowLeft, Video, FileText, Layout } from "lucide-react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { EditLessonForm } from "@/components/admin/edit-lesson-form";
 
-export default async function EditLessonPage({ 
-  params 
-}: { 
-  params: { courseId: string, lessonId: string } 
+export default async function LessonEditPage({
+  params
+}: {
+  params: { courseId: string; lessonId: string }
 }) {
-  // Obtenemos los datos en el servidor
   const lesson = await db.lesson.findUnique({
     where: { id: params.lessonId }
   });
@@ -17,21 +16,27 @@ export default async function EditLessonPage({
   if (!lesson) notFound();
 
   return (
-    <div className="max-w-4xl mx-auto pt-10 pb-20 px-6">
-      <Link href={`/admin/courses/${params.courseId}`} className="flex items-center gap-2 text-gray-500 hover:text-white mb-10 text-xs font-bold uppercase tracking-widest group">
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> 
-        Volver a la estructura del curso
-      </Link>
-
-      <div className="mb-12">
-        <h1 className="text-5xl font-black tracking-tighter mb-2 italic">
-          Configurar <span className="text-primary">Contenido</span>
-        </h1>
-        <p className="text-gray-400">Estás editando la lección: <span className="text-white font-bold">{lesson.title}</span></p>
+    <div className="max-w-5xl mx-auto">
+      {/* CABECERA */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 bg-white/[0.02] border border-white/5 p-8 rounded-[2.5rem]">
+        <div>
+          <Link 
+            href={`/admin/courses/${params.courseId}`} 
+            className="text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-2 mb-2"
+          >
+            <ArrowLeft size={12} /> Volver a la estructura
+          </Link>
+          <h1 className="text-3xl font-black italic tracking-tighter uppercase">
+            Editar <span className="text-primary">Clase</span>
+          </h1>
+          <p className="text-gray-500 text-xs font-medium mt-1">Configura el video y el material de estudio.</p>
+        </div>
       </div>
 
-      {/* Pasamos los datos iniciales al componente de cliente */}
-      <EditLessonForm initialData={lesson} courseId={params.courseId} />
+      <EditLessonForm 
+        lesson={lesson} 
+        courseId={params.courseId} 
+      />
     </div>
   );
 }

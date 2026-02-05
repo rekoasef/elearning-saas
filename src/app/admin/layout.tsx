@@ -1,6 +1,7 @@
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
 
 export default async function AdminLayout({
   children,
@@ -12,28 +13,27 @@ export default async function AdminLayout({
 
   if (!user) redirect("/login");
 
-  // Verificamos el rol en nuestra base de datos
   const dbUser = await db.user.findUnique({
     where: { id: user.id },
-    select: { role: true }
   });
 
   if (dbUser?.role !== "ADMIN") {
-    redirect("/dashboard"); // Si no es admin, lo echamos al dashboard
+    redirect("/dashboard");
   }
 
   return (
-    <div className="flex min-h-screen bg-black text-white">
-      {/* Sidebar Admin Lateral */}
-      <aside className="w-64 border-r border-white/10 p-6 hidden md:block">
-        <h2 className="text-xl font-black mb-10 tracking-tighter">Admin <span className="text-primary">Panel</span></h2>
-        <nav className="space-y-4">
-          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Gestión</p>
-          <a href="/admin/courses" className="block p-3 rounded-xl bg-primary/10 text-primary font-bold border border-primary/20">Cursos</a>
-          <a href="/admin/users" className="block p-3 rounded-xl text-gray-400 hover:bg-white/5">Usuarios</a>
-        </nav>
+    <div className="flex h-screen bg-[#050505] overflow-hidden">
+      {/* COLUMNA IZQUIERDA: SIDEBAR */}
+      <aside className="hidden md:flex w-72 flex-col fixed inset-y-0 z-50">
+        <AdminSidebar />
       </aside>
-      <main className="flex-1 p-10">{children}</main>
+
+      {/* COLUMNA DERECHA: CONTENIDO */}
+      <main className="flex-1 md:pl-72 overflow-y-auto">
+        <div className="p-4 md:p-10 min-h-screen">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
