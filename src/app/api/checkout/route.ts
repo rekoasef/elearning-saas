@@ -3,13 +3,7 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { MercadoPagoConfig, Preference } from 'mercadopago'
 
-// 1. Sincronización con tu .env
-// Usamos el nombre exacto que tienes: MERCADOPAGO_ACCESS_TOKEN
 const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-
-if (!accessToken) {
-  console.error("[MP_ERROR]: Falta MERCADOPAGO_ACCESS_TOKEN en las variables de entorno");
-}
 
 const client = new MercadoPagoConfig({ 
   accessToken: accessToken || '' 
@@ -34,11 +28,11 @@ export async function POST(req: Request) {
       return new NextResponse("Curso no encontrado", { status: 404 })
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    // Limpiamos la URL de Vercel de tu .env
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000"
 
     const preference = new Preference(client)
 
-    // 2. Creación de la preferencia con modo binario para evitar bloqueos de políticas
     const result = await preference.create({
       body: {
         items: [
@@ -63,23 +57,18 @@ export async function POST(req: Request) {
           userId: user.id,
           courseId: course.id
         }),
-        // El modo binario ayuda a procesar pagos de forma inmediata o fallida,
-        // evitando el estado "en proceso" que a veces causa conflictos de políticas.
-        binary_mode: true,
+        // IMPORTANTE: En producción real con tarjetas reales, 
+        // binary_mode: false permite que el pago quede 'en proceso' 
+        // si la tarjeta requiere validación, evitando el error fatal.
+        binary_mode: false, 
       }
     })
 
     return NextResponse.json({ url: result.init_point })
 
   } catch (error: any) {
-    console.error("[CHECKOUT_ERROR_DETAIL]", {
-      status: error.status,
-      message: error.message,
-    })
-    
-    // Devolvemos el error detallado para debug
     return NextResponse.json(
-      { error: error.message, code: error.code }, 
+      { error: error.message }, 
       { status: error.status || 500 }
     )
   }
