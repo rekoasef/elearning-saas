@@ -1,61 +1,67 @@
 "use client"
 
-import { useState } from "react";
-import { toast } from "sonner";
-import { Loader2, CreditCard } from "lucide-react";
+import { Button } from "@/components/ui/button"
+import { useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { Loader2, ShoppingCart } from "lucide-react"
 
-interface Props {
-  courseId: string;
+interface EnrollmentButtonProps {
+  courseId: string
+  courseSlug: string
+  userId: string | undefined
+  price: number
 }
 
-export function EnrollmentButton({ courseId }: Props) {
-  const [isLoading, setIsLoading] = useState(false);
+export default function EnrollmentButton({ 
+  courseId, 
+  courseSlug,
+  userId, 
+  price 
+}: EnrollmentButtonProps) {
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
-  const handleCheckout = async () => {
-    try {
-      setIsLoading(true);
-      
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseId }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error("Debes iniciar sesión para comprar");
-          window.location.assign("/login");
-          return;
-        }
-        throw new Error();
-      }
-
-      const { url } = await response.json();
-      
-      // Redirigir al Checkout Pro de Mercado Pago
-      window.location.assign(url);
-      
-    } catch (error) {
-      toast.error("Hubo un error al procesar el pago");
-    } finally {
-      setIsLoading(false);
+  const handleEnrollment = async () => {
+    // Si no hay usuario, redirigimos al login con el parámetro 'next'
+    if (!userId) {
+      router.push(`/login?next=/courses/${courseSlug}`)
+      return
     }
-  };
+
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ courseId, price }),
+        })
+
+        const data = await response.json()
+
+        if (data.url) {
+          // Redirección a Mercado Pago
+          window.location.href = data.url
+        }
+      } catch (error) {
+        console.error("Error en el checkout:", error)
+      }
+    })
+  }
 
   return (
-    <button
-      onClick={handleCheckout}
-      disabled={isLoading}
-      className="w-full bg-primary hover:bg-primary/90 text-black py-5 rounded-2xl font-black italic uppercase transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+    <Button 
+      onClick={handleEnrollment}
+      disabled={isPending}
+      className="w-full h-14 bg-primary hover:bg-primary/90 text-white text-lg font-black italic gap-3 rounded-2xl shadow-lg shadow-primary/20"
     >
-      {isLoading ? (
-        <Loader2 className="animate-spin" size={20} />
+      {isPending ? (
+        <Loader2 className="h-6 w-6 animate-spin" />
       ) : (
         <>
-          <CreditCard size={20} className="group-hover:scale-110 transition-transform" />
-          Adquirir Curso Ahora
+          <ShoppingCart size={22} />
+          ADQUIRIR CURSO POR ${price}
         </>
       )}
-    </button>
-  );
+    </Button>
+  )
 }

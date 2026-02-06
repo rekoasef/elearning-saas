@@ -2,7 +2,6 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Creamos la respuesta inicial
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -18,7 +17,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Actualizamos tanto la petición como la respuesta para mantener sincronía
           request.cookies.set({ name, value, ...options })
           response = NextResponse.next({
             request: {
@@ -40,27 +38,24 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // IMPORTANTE: getUser() es lo que refresca la sesión si es necesario
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protección de rutas: Si no hay usuario y quiere entrar a zonas protegidas
-  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || 
-                           request.nextUrl.pathname.startsWith('/admin')
+  // RUTAS PROTEGIDAS
+  const isDashboardPage = request.nextUrl.pathname.startsWith('/dashboard')
+  const isAdminPage = request.nextUrl.pathname.startsWith('/admin')
 
-  if (!user && isProtectedRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // Si el usuario ya está logueado e intenta ir al login, lo mandamos al dashboard
-  if (user && request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  if ((isDashboardPage || isAdminPage) && !user) {
+    // CAPTURA DE RUTA: Guardamos a dónde quería ir el usuario
+    const nextPath = request.nextUrl.pathname
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('next', nextPath)
+    
+    return NextResponse.redirect(loginUrl)
   }
 
   return response
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/login'],
+  matcher: ['/dashboard/:path*', '/admin/:path*'],
 }

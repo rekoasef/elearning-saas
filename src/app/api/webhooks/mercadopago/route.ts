@@ -1,52 +1,64 @@
+import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
-import { db } from "@/lib/db";
 
-const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
+const client = new MercadoPagoConfig({ 
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || "" 
 });
 
 export async function POST(req: Request) {
+  // Intentamos obtener el ID tanto del body como de la URL (IPN vs Webhook)
+  const body = await req.json();
+  const url = new URL(req.url);
+  const id = body.data?.id || url.searchParams.get("data.id");
+
+  if (!id) {
+    return new NextResponse("ID no encontrado", { status: 400 });
+  }
+
   try {
-    const body = await req.json();
-    
-    // Mercado Pago envía notificaciones por 'payment' o 'merchant_order'
-    const topic = body.type || body.topic;
+    const payment = await new Payment(client).get({ id });
 
-    if (topic === "payment") {
-      const paymentId = body.data?.id;
-      const payment = await new Payment(client).get({ id: paymentId });
+    // Verificamos si el pago fue aprobado
+    if (payment.status === "approved") {
+      // Extraemos la info que guardamos en 'external_reference'
+      const { userId, courseId } = JSON.parse(payment.external_reference as string);
 
-      if (payment.status === "approved") {
-        const reference = payment.external_reference; // "userId__courseId"
-        if (!reference) return new NextResponse("No reference found", { status: 400 });
+      const userIdStr = String(userId);
+      const courseIdStr = String(courseId);
 
-        const [userId, courseId] = reference.split("__");
+      // Los campos 'amount' y 'status' son obligatorios en tu nuevo esquema
+      const amount = payment.transaction_amount;
+      const status = payment.status;
 
-        // GUARDADO EN DB: Coincidiendo con tu schema.prisma
-        await db.purchase.upsert({
-          where: {
-            userId_courseId: { userId, courseId },
+      await db.purchase.upsert({
+        where: {
+          userId_courseId: {
+            userId: userIdStr,
+            courseId: courseIdStr,
           },
-          update: {
-            status: payment.status,
-            amount: Number(payment.transaction_amount),
+        },
+        update: {
+          status: status, // Actualizamos el estado por si acaso
+        }, 
+        create: {
+          amount: amount as number, // Valor obligatorio
+          status: status as string, // Valor obligatorio
+          user: {
+            connect: { id: userIdStr }
           },
-          create: {
-            userId,
-            courseId,
-            amount: Number(payment.transaction_amount), // Requerido por tu schema
-            status: payment.status, // Requerido por tu schema
-          },
-        });
+          course: {
+            connect: { id: courseIdStr }
+          }
+        },
+      });
 
-        console.log(`✅ Acceso liberado: User ${userId} compró ${courseId}`);
-      }
+      console.log(`✅ Pago aprobado: Curso ${courseId} asignado al usuario ${userId}`);
     }
 
     return new NextResponse("OK", { status: 200 });
   } catch (error) {
-    console.error("[MP_WEBHOOK_ERROR]", error);
+    console.error("❌ Error en Webhook MP:", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

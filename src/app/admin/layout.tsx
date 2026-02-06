@@ -22,13 +22,15 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-[#050505] overflow-hidden">
-      {/* COLUMNA IZQUIERDA: SIDEBAR */}
-      <aside className="hidden md:flex w-72 flex-col fixed inset-y-0 z-50">
+    // h-[calc(100vh-5rem)] porque el Navbar ocupa 5rem (h-20)
+    <div className="flex h-[calc(100vh-5rem)] bg-[#050505] overflow-hidden">
+      
+      {/* SIDEBAR ESCRITORIO: Oculto en móviles (hidden) */}
+      <aside className="hidden md:flex w-72 flex-col fixed left-0 top-20 bottom-0 z-40 border-r border-white/5 bg-[#050505]">
         <AdminSidebar />
       </aside>
 
-      {/* COLUMNA DERECHA: CONTENIDO */}
+      {/* CONTENIDO PRINCIPAL: pl-0 en móvil, pl-72 en escritorio */}
       <main className="flex-1 md:pl-72 overflow-y-auto">
         <div className="p-4 md:p-10 min-h-screen">
           {children}

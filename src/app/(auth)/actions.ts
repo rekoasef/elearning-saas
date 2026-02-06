@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 
-export async function login(formData: any) {
+export async function login(formData: any, redirectTo?: string) {
   const supabase = createClient()
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -18,39 +18,45 @@ export async function login(formData: any) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  
+  // Si existe una ruta de redirección (ej: volver al curso), vamos ahí. 
+  // Si no, al dashboard por defecto.
+  const targetPath = redirectTo || '/dashboard'
+  redirect(targetPath)
 }
 
 export async function registerUser(data: any) {
   const supabase = createClient()
 
-  // 1. Registro en Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
+    options: {
+      data: {
+        full_name: data.name,
+      }
+    }
   })
 
   if (authError) return { error: authError.message }
 
-  // 2. Sincronización con nuestra DB (Prisma)
   if (authData.user) {
     try {
       await db.user.create({
         data: {
-          id: authData.user.id, // Sincronizamos IDs
+          id: authData.user.id,
           email: data.email,
           name: data.name,
-          role: "USER" // Por defecto son Alumnos
+          role: "USER"
         }
       })
     } catch (dbError) {
       console.error("Error sincronizando con Prisma:", dbError)
-      // Nota: Aquí podrías manejar si el usuario ya existe en Prisma
     }
   }
 
   revalidatePath('/', 'layout')
-  redirect('/login?message=Cuenta creada. Por favor, inicia sesión.')
+  return { success: true }
 }
 
 export async function logout() {

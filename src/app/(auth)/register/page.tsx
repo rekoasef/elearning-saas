@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { registerSchema } from "@/lib/validations/auth"
 import { brandConfig } from "@/config/brand"
 import { registerUser } from "../actions"
-import { AlertCircle, Loader2, CheckCircle2 } from "lucide-react"
+import { AlertCircle, Loader2, CheckCircle2, Mail } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -53,20 +53,27 @@ export default function RegisterPage() {
   if (success) {
     return (
       <div className="container flex h-screen w-screen flex-col items-center justify-center bg-background">
-        <Card className="w-[400px] border-border bg-card">
+        <Card className="w-[400px] border-border bg-card shadow-2xl">
           <CardHeader>
             <div className="flex justify-center mb-4 text-primary">
-              <CheckCircle2 className="h-12 w-12" />
+              <div className="p-3 bg-primary/10 rounded-full animate-pulse">
+                <Mail className="h-12 w-12" />
+              </div>
             </div>
-            <CardTitle className="text-2xl text-center font-bold">¡Registro exitoso!</CardTitle>
-            <CardDescription className="text-center">
-              Tu cuenta ha sido creada. Ahora podés iniciar sesión para comenzar a aprender.
+            <CardTitle className="text-2xl text-center font-bold">¡Revisá tu email!</CardTitle>
+            <CardDescription className="text-center text-white/70">
+              Hemos enviado un enlace de confirmación a tu correo electrónico. 
+              <br /><br />
+              <span className="text-primary font-bold">Es obligatorio confirmar tu cuenta</span> para poder acceder a la plataforma.
             </CardDescription>
           </CardHeader>
-          <CardFooter>
-            <Button asChild className="w-full bg-primary hover:bg-primary/90">
+          <CardFooter className="flex flex-col gap-4">
+            <Button asChild className="w-full bg-primary hover:bg-primary/90 text-white font-bold">
               <Link href="/login">Ir al Login</Link>
             </Button>
+            <p className="text-xs text-center text-muted-foreground">
+              ¿No recibiste nada? Revisá tu carpeta de Spam.
+            </p>
           </CardFooter>
         </Card>
       </div>
@@ -135,7 +142,7 @@ export default function RegisterPage() {
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button 
-              className="w-full bg-primary hover:bg-primary/90 text-white" 
+              className="w-full bg-primary hover:bg-primary/90 text-white font-bold" 
               type="submit"
               disabled={isLoading}
             >
@@ -144,7 +151,7 @@ export default function RegisterPage() {
             </Button>
             <p className="text-sm text-center text-muted-foreground">
               ¿Ya tenés cuenta?{" "}
-              <Link href="/login" className="text-primary hover:underline">
+              <Link href="/login" className="text-primary hover:underline font-bold">
                 Iniciá sesión
               </Link>
             </p>
