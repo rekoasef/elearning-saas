@@ -7,58 +7,51 @@ const client = new MercadoPagoConfig({
 });
 
 export async function POST(req: Request) {
-  // Intentamos obtener el ID tanto del body como de la URL (IPN vs Webhook)
-  const body = await req.json();
-  const url = new URL(req.url);
-  const id = body.data?.id || url.searchParams.get("data.id");
-
-  if (!id) {
-    return new NextResponse("ID no encontrado", { status: 400 });
-  }
-
+  console.log("--- WEBHOOK RECIBIDO ---");
+  
   try {
-    const payment = await new Payment(client).get({ id });
+    const body = await req.json();
+    console.log("Body del Webhook:", JSON.stringify(body));
 
-    // Verificamos si el pago fue aprobado
+    // Mercado Pago envía el ID en body.data.id para Webhooks
+    const paymentId = body.data?.id || body.id;
+
+    if (!paymentId || body.type !== "payment") {
+      console.log("No es una notificación de pago válida, ignorando...");
+      return new NextResponse("Ignored", { status: 200 });
+    }
+
+    const payment = await new Payment(client).get({ id: paymentId });
+    console.log("Estado del pago en MP:", payment.status);
+
     if (payment.status === "approved") {
-      // Extraemos la info que guardamos en 'external_reference'
       const { userId, courseId } = JSON.parse(payment.external_reference as string);
 
-      const userIdStr = String(userId);
-      const courseIdStr = String(courseId);
-
-      // Los campos 'amount' y 'status' son obligatorios en tu nuevo esquema
-      const amount = payment.transaction_amount;
-      const status = payment.status;
-
+      // Usamos el ID de pago de MP como ID de la transacción para evitar duplicados
       await db.purchase.upsert({
         where: {
           userId_courseId: {
-            userId: userIdStr,
-            courseId: courseIdStr,
+            userId: String(userId),
+            courseId: String(courseId),
           },
         },
         update: {
-          status: status, // Actualizamos el estado por si acaso
-        }, 
+          status: "approved",
+        },
         create: {
-          amount: amount as number, // Valor obligatorio
-          status: status as string, // Valor obligatorio
-          user: {
-            connect: { id: userIdStr }
-          },
-          course: {
-            connect: { id: courseIdStr }
-          }
+          userId: String(userId),
+          courseId: String(courseId),
+          amount: Number(payment.transaction_amount),
+          status: "approved",
         },
       });
 
-      console.log(`✅ Pago aprobado: Curso ${courseId} asignado al usuario ${userId}`);
+      console.log(`✅ ÉXITO: Curso ${courseId} asignado al usuario ${userId}`);
     }
 
     return new NextResponse("OK", { status: 200 });
-  } catch (error) {
-    console.error("❌ Error en Webhook MP:", error);
-    return new NextResponse("Internal Error", { status: 500 });
+  } catch (error: any) {
+    console.error("❌ ERROR CRÍTICO EN WEBHOOK:", error.message);
+    return new NextResponse(`Error: ${error.message}`, { status: 500 });
   }
 }
