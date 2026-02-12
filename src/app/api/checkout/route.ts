@@ -48,7 +48,7 @@ export async function POST(req: Request) {
           email: user.email, 
         },
         back_urls: {
-          success: `${baseUrl}/dashboard`,
+          success: `${baseUrl}/success`,
           failure: `${baseUrl}/courses/${course.slug}`,
           pending: `${baseUrl}/dashboard`,
         },

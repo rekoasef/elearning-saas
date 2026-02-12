@@ -1,42 +1,55 @@
-"use client"
+"use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2 } from "lucide-react";
-import { toggleLessonComplete } from "@/app/dashboard/courses/actions";
+import { CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { toggleLessonProgress } from "@/app/actions/progress";
+import { useRouter } from "next/navigation";
 
-export function ProgressButton({ 
-  lessonId, 
-  slug, 
-  initialCompleted 
-}: { 
-  lessonId: string, slug: string, initialCompleted: boolean 
-}) {
+interface ProgressButtonProps {
+  lessonId: string;
+  slug: string;
+  initialCompleted: boolean;
+}
+
+export const ProgressButton = ({
+  lessonId,
+  slug,
+  initialCompleted,
+}: ProgressButtonProps) => {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const [completed, setCompleted] = useState(initialCompleted);
-  const [loading, setLoading] = useState(false);
 
-  const handleToggle = async () => {
-    setLoading(true);
+  const onClick = async () => {
     try {
-      await toggleLessonComplete(lessonId, slug, !completed);
-      setCompleted(!completed);
+      setIsLoading(true);
+      const newStatus = !completed;
+      
+      await toggleLessonProgress(lessonId, slug, newStatus);
+      
+      setCompleted(newStatus);
+      router.refresh(); // Esto actualiza el Sidebar instantáneamente
+    } catch {
+      console.log("Error al actualizar progreso");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  const Icon = isLoading ? Loader2 : completed ? CheckCircle2 : Circle;
+
   return (
-    <Button 
-      onClick={handleToggle}
-      disabled={loading}
-      className={`rounded-2xl h-12 px-6 font-bold transition-all ${
+    <button
+      onClick={onClick}
+      disabled={isLoading}
+      className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${
         completed 
-          ? "bg-green-500/20 text-green-500 border border-green-500/30 hover:bg-green-500/30" 
-          : "bg-primary text-white hover:bg-primary/90"
+          ? "bg-green-500/10 text-green-500 border border-green-500/20" 
+          : "bg-primary text-black hover:opacity-90 shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]"
       }`}
     >
-      <CheckCircle2 size={18} className="mr-2" />
-      {completed ? "Clase Completada" : "Marcar como finalizada"}
-    </Button>
+      <Icon className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+      {completed ? "Lección Completada" : "Marcar como Finalizada"}
+    </button>
   );
-}
+};
