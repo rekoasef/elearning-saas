@@ -1,9 +1,10 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { EditCourseForm } from "./edit-course-form";
-import { CourseStructure } from "./course-structure"; // Importamos el nuevo componente
+import { CourseStructure } from "./course-structure";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { Actions } from "./_components/actions"; // Importamos el componente de borrado
 
 export default async function CourseConfigPage({ 
   params 
@@ -35,13 +36,19 @@ export default async function CourseConfigPage({
             Configuración del <span className="text-primary">Contenido</span>
           </h1>
         </div>
-        <Link 
-          href={`/courses/${course.slug}`} 
-          target="_blank"
-          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
-        >
-          Ver Vista Pública <ExternalLink size={14} />
-        </Link>
+        
+        <div className="flex items-center gap-4">
+          {/* BOTÓN ELIMINAR CURSO (CUADRADO ROJO) */}
+          <Actions courseId={course.id} />
+
+          <Link 
+            href={`/courses/${course.slug}`} 
+            target="_blank"
+            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+          >
+            Ver Vista Pública <ExternalLink size={14} />
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -50,7 +57,6 @@ export default async function CourseConfigPage({
         </div>
 
         <div className="lg:col-span-2">
-          {/* Aquí inyectamos la interactividad */}
           <CourseStructure courseId={course.id} modules={course.modules} />
         </div>
       </div>

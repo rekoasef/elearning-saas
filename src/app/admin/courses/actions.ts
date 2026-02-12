@@ -95,9 +95,19 @@ export async function createModule(courseId: string, title: string) {
   }
 }
 
-// CREAR LECCIÓN
 export async function createLesson(moduleId: string, courseId: string, title: string) {
   try {
+    // 1. Verificación de seguridad: ¿Existe realmente ese módulo?
+    const moduleExists = await db.module.findUnique({
+      where: { id: moduleId }
+    });
+
+    if (!moduleExists) {
+      console.error(`❌ El módulo con ID ${moduleId} no existe en la DB.`);
+      return { error: "El módulo de destino no existe." };
+    }
+
+    // 2. Buscar el orden de la última lección
     const lastLesson = await db.lesson.findFirst({
       where: { moduleId },
       orderBy: { order: "desc" }
@@ -105,7 +115,8 @@ export async function createLesson(moduleId: string, courseId: string, title: st
     
     const nextOrder = lastLesson ? lastLesson.order + 1 : 1;
     
-    await db.lesson.create({
+    // 3. Crear la lección
+    const lesson = await db.lesson.create({
       data: { 
         title, 
         moduleId, 
@@ -114,10 +125,10 @@ export async function createLesson(moduleId: string, courseId: string, title: st
     });
     
     revalidatePath(`/admin/courses/${courseId}`);
-    return { success: true };
+    return { success: true, lesson };
   } catch (error) {
     console.error("[CREATE_LESSON_ERROR]:", error);
-    return { error: "Error al crear lección" };
+    return { error: "Error interno al crear lección" };
   }
 }
 
@@ -142,5 +153,32 @@ export async function updateLesson(
   } catch (error) {
     console.error("[UPDATE_LESSON_ERROR]:", error);
     return { error: "Error al actualizar lección" };
+  }
+}
+
+export async function updateModuleTitle(moduleId: string, courseId: string, title: string) {
+  try {
+    await db.module.update({
+      where: { id: moduleId },
+      data: { title }
+    });
+    revalidatePath(`/admin/courses/${courseId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+// ACTUALIZAR TÍTULO DE LECCIÓN
+export async function updateLessonTitle(lessonId: string, courseId: string, title: string) {
+  try {
+    await db.lesson.update({
+      where: { id: lessonId },
+      data: { title }
+    });
+    revalidatePath(`/admin/courses/${courseId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false };
   }
 }
