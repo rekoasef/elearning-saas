@@ -137,12 +137,17 @@ export default async function LandingPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
-            <Link key={course.id} href={`/course/${course.slug}`} className="group">
+            /* CORRECCIÓN AQUÍ: href={`/courses/${course.slug}`} */
+            <Link 
+              key={course.id} 
+              href={`/courses/${course.slug || course.id}`} 
+              className="group"
+            >
               <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] overflow-hidden transition-all hover:border-primary/40 hover:bg-white/[0.04]">
                 <div className="relative aspect-video">
                   <Image
                     fill
-                    src={course.imageUrl || "/placeholder.jpg"}
+                    src={course.imageUrl || course.image || "/placeholder.jpg"}
                     alt={course.title}
                     className="object-cover opacity-50 group-hover:opacity-80 transition-all"
                   />
@@ -155,7 +160,9 @@ export default async function LandingPage() {
                     {course.title}
                   </h3>
                   <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                    <span className="text-xl font-black text-white italic">${course.price || "99"}</span>
+                    <span className="text-xl font-black text-white italic">
+                      ${course.price?.toLocaleString('es-AR') || "0"}
+                    </span>
                     <PlayCircle size={18} className="text-primary" />
                   </div>
                 </div>

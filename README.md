@@ -61,6 +61,16 @@ MVP de plataforma e-learning moderna, modular y escalable para la venta de curso
 - [x] **Editor de Contenido**: Interfaz para carga de videos y material de apoyo.
 - [x] Feedback global mediante **Sonner** para acciones administrativas.
 
+## 🏗️ Estado del Proyecto: Fase 8 Finalizada (Analytics & Business Intelligence)
+- [x] **Dashboard Administrativo Pro**: Visualización centralizada de métricas financieras y educativas.
+- [x] **Gráficos Dinámicos**: Integración de `recharts` para visualizar tendencias de ingresos mensuales.
+- [x] **Métricas de Negocio**: 
+    - **Caja Total**: Ingresos brutos aprobados.
+    - **ARPU**: Cálculo automático del ingreso promedio por alumno.
+    - **Engagement Rate**: Tasa de finalización global basada en progreso real.
+- [x] **Ranking de Alumnos**: Monitoreo de progreso individual y nivel de compromiso directamente en el panel principal.
+
+
 ## 🎨 Identidad Visual
 - **Fondo:** Negro (#000000)
 - **Acento:** Morado (#7c3aed)

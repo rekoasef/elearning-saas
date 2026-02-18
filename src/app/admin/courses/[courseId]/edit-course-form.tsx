@@ -1,102 +1,152 @@
-"use client"
+"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { updateCourse } from "../actions";
 import { toast } from "sonner";
-import { Save, Loader2, DollarSign, Type, ImageIcon, Eye, EyeOff } from "lucide-react";
+import { Loader2, Save, Eye, EyeOff } from "lucide-react";
 
-export function EditCourseForm({ course }: { course: any }) {
-  const [loading, setLoading] = useState(false);
-  // Manejamos la visibilidad como un estado de React
-  const [isPublished, setIsPublished] = useState(course.isPublished || false);
+interface EditCourseFormProps {
+  course: any;
+}
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
+export const EditCourseForm = ({ course }: EditCourseFormProps) => {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [title, setTitle] = useState(course.title);
+  const [price, setPrice] = useState(course.price);
+  // Aseguramos que tome el valor booleano correcto de la DB
+  const [isPublished, setIsPublished] = useState(course.isPublished || course.published || false);
 
-    const formData = new FormData(e.currentTarget);
+  const onSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
-    const values = {
-      title: formData.get("title") as string,
-      description: course.description || "Sin descripción", // Evitamos que Zod falle por falta de desc
-      price: Number(formData.get("price")),
-      image: formData.get("image") as string || null,
-      isPublished: isPublished,
-    };
+    setIsLoading(true);
+    try {
+      const values = {
+        title,
+        price: Number(price),
+        isPublished: isPublished, 
+        description: course.description || "",
+        image: course.image || null
+      };
+
+      const res = await updateCourse(course.id, values);
+
+      if (res.success) {
+        toast.success("Curso actualizado con éxito");
+        router.refresh();
+      } else {
+        toast.error("Error al guardar los cambios");
+      }
+    } catch (error) {
+      toast.error("Algo salió mal");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleVisibility = async () => {
+    const newStatus = !isPublished;
+    
+    // Optimismo UI: cambiamos el estado antes de la petición
+    setIsPublished(newStatus);
+    setIsLoading(true);
 
     try {
-      const result = await updateCourse(course.id, values);
-
-      if (result?.success) {
-        toast.success("¡Cambios guardados con éxito!");
+      const values = {
+        title,
+        price: Number(price),
+        isPublished: newStatus,
+        description: course.description || "",
+        image: course.image || null
+      };
+      
+      const res = await updateCourse(course.id, values);
+      
+      if (res.success) {
+        toast.success(newStatus ? "Curso ahora es público" : "Curso ocultado");
+        router.refresh();
       } else {
-        toast.error(result?.error || "Error al guardar");
+        toast.error("No se pudo actualizar la visibilidad");
+        setIsPublished(!newStatus); // Revertimos si falla el servidor
       }
-    } catch (err) {
+    } catch {
       toast.error("Error de conexión");
+      setIsPublished(!newStatus);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6 bg-white/[0.02] border border-white/10 p-8 rounded-[2.5rem]">
-      <h2 className="text-xl font-black italic tracking-tight mb-4 text-primary uppercase">Configuración</h2>
-      
-      {/* TÍTULO */}
-      <div className="space-y-4">
-        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Título</label>
-        <input 
-          name="title" 
-          defaultValue={course.title} 
-          className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-white outline-none focus:ring-2 focus:ring-primary/50" 
-          required 
-        />
-      </div>
-
-      {/* PRECIO */}
-      <div className="space-y-4">
-        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Precio (ARS)</label>
-        <div className="relative">
-          <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={16} />
-          <input 
-            name="price" 
-            type="number" 
-            step="0.01" 
-            defaultValue={course.price} 
-            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-white font-black text-xl outline-none focus:ring-2 focus:ring-primary/50" 
-            required 
+    <div className="bg-white/[0.02] border border-white/10 p-8 rounded-[2.5rem] space-y-6">
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Título del Curso</label>
+          <input
+            className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-primary/50 transition-all font-bold"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
-      </div>
 
-      {/* VISIBILIDAD */}
-      <div 
-        onClick={() => setIsPublished(!isPublished)}
-        className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
-          isPublished ? "bg-primary/10 border-primary/30" : "bg-white/5 border-white/10"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          {isPublished ? <Eye className="text-primary" size={18} /> : <EyeOff className="text-gray-500" size={18} />}
-          <span className={`text-[10px] font-black uppercase tracking-widest ${isPublished ? "text-primary" : "text-gray-500"}`}>
-            {isPublished ? "Curso Visible" : "Curso Oculto"}
-          </span>
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Precio (ARS)</label>
+          <div className="relative">
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-primary font-bold">$</span>
+            <input
+              type="number"
+              className="w-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-white outline-none focus:border-primary/50 transition-all font-bold"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+          </div>
         </div>
-        <div className={`w-10 h-6 rounded-full relative transition-all ${isPublished ? "bg-primary" : "bg-gray-700"}`}>
-          <div className={`absolute top-1 bg-white w-4 h-4 rounded-full transition-all ${isPublished ? "left-5" : "left-1"}`} />
-        </div>
-      </div>
 
-      {/* BOTÓN GUARDAR */}
-      <button 
-        type="submit" 
-        disabled={loading} 
-        className="w-full bg-primary hover:bg-primary/90 text-black py-4 rounded-2xl font-black italic flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
-      >
-        {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />}
-        GUARDAR CAMBIOS
-      </button>
-    </form>
+        <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+          <div className="flex items-center gap-3">
+            {isPublished ? (
+              <Eye className="text-primary" size={18} />
+            ) : (
+              <EyeOff className="text-gray-500" size={18} />
+            )}
+            <span className="text-xs font-black uppercase italic tracking-tighter text-white">
+              {isPublished ? "Curso Público" : "Curso Oculto"}
+            </span>
+          </div>
+          
+          <button
+            type="button"
+            onClick={toggleVisibility}
+            disabled={isLoading}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none disabled:opacity-50 ${
+              isPublished ? "bg-primary" : "bg-zinc-700"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                isPublished ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-primary text-black font-black uppercase tracking-widest py-4 rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {isLoading ? (
+            <Loader2 className="animate-spin" size={18} />
+          ) : (
+            <>
+              <Save size={18} /> Guardar Cambios
+            </>
+          )}
+        </button>
+      </form>
+    </div>
   );
-}
+};

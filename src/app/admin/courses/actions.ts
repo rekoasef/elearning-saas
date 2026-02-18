@@ -5,46 +5,48 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-// ESQUEMA DE VALIDACIÓN
-// Relajamos la validación de 'image' para que acepte strings de cualquier tipo
 const CourseSchema = z.object({
   title: z.string().min(3, "Mínimo 3 caracteres"),
-  description: z.string().min(10, "Mínimo 10 caracteres").optional().or(z.literal("")),
+  description: z.string().optional().nullable(),
   price: z.coerce.number().min(0),
   image: z.string().optional().nullable(), 
   isPublished: z.boolean().default(false),
 });
 
-// ACTUALIZAR CURSO
+// ACTUALIZAR CURSO - CORREGIDO
 export async function updateCourse(courseId: string, values: z.infer<typeof CourseSchema>) {
   try {
+    // Generamos un slug limpio basado en el título actual
     const slug = values.title
       .toLowerCase()
-      .replace(/ /g, "-")
-      .replace(/[^\w-]+/g, "");
-    
-    // Desestructuración para control total del tipado
-    const { isPublished, title, description, price, image } = values;
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Quita caracteres especiales
+      .replace(/[\s_-]+/g, '-')  // Reemplaza espacios y guiones bajos por guiones
+      .replace(/^-+|-+$/g, '');   // Quita guiones al inicio o final
 
     const updated = await db.course.update({
       where: { id: courseId },
       data: { 
-        title,
-        description: description || "",
-        price,
-        image: image || null,
-        published: Boolean(isPublished),
-        slug 
+        title: values.title,
+        description: values.description || "",
+        price: values.price,
+        image: values.image || null,
+        isPublished: values.isPublished,
+        published: values.isPublished, 
+        slug: slug // <--- IMPORTANTE: Actualizamos el slug
       },
     });
 
-    revalidatePath("/admin/courses");
+    // Limpiamos caché de todo el sitio para que los links nuevos funcionen
+    revalidatePath("/");
+    revalidatePath("/courses");
+    revalidatePath(`/courses/${slug}`);
     revalidatePath(`/admin/courses/${courseId}`);
     
     return { success: true, data: updated };
   } catch (error) {
     console.error("[UPDATE_COURSE_ERROR]:", error);
-    return { error: "No se pudo actualizar el curso. Verifica los campos." };
+    return { error: "Error al actualizar el curso" };
   }
 }
 
@@ -52,7 +54,6 @@ export async function updateCourse(courseId: string, values: z.infer<typeof Cour
 export async function createCourse(values: z.infer<typeof CourseSchema>) {
   try {
     const slug = values.title.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
-    
     await db.course.create({
       data: { 
         ...values, 
@@ -60,7 +61,6 @@ export async function createCourse(values: z.infer<typeof CourseSchema>) {
         slug 
       },
     });
-    
     revalidatePath("/admin/courses");
     redirect("/admin/courses");
   } catch (error) {
@@ -76,68 +76,40 @@ export async function createModule(courseId: string, title: string) {
       where: { courseId },
       orderBy: { order: "desc" }
     });
-    
     const nextOrder = lastModule ? lastModule.order + 1 : 1;
-    
     await db.module.create({
-      data: { 
-        title, 
-        courseId, 
-        order: nextOrder 
-      }
+      data: { title, courseId, order: nextOrder }
     });
-    
     revalidatePath(`/admin/courses/${courseId}`);
     return { success: true };
   } catch (error) {
-    console.error("[CREATE_MODULE_ERROR]:", error);
     return { error: "Error al crear módulo" };
   }
 }
 
+// CREAR LECCIÓN
 export async function createLesson(moduleId: string, courseId: string, title: string) {
   try {
-    // 1. Verificación de seguridad: ¿Existe realmente ese módulo?
-    const moduleExists = await db.module.findUnique({
-      where: { id: moduleId }
-    });
+    const moduleExists = await db.module.findUnique({ where: { id: moduleId } });
+    if (!moduleExists) return { error: "El módulo no existe." };
 
-    if (!moduleExists) {
-      console.error(`❌ El módulo con ID ${moduleId} no existe en la DB.`);
-      return { error: "El módulo de destino no existe." };
-    }
-
-    // 2. Buscar el orden de la última lección
     const lastLesson = await db.lesson.findFirst({
       where: { moduleId },
       orderBy: { order: "desc" }
     });
-    
     const nextOrder = lastLesson ? lastLesson.order + 1 : 1;
-    
-    // 3. Crear la lección
     const lesson = await db.lesson.create({
-      data: { 
-        title, 
-        moduleId, 
-        order: nextOrder 
-      }
+      data: { title, moduleId, order: nextOrder }
     });
-    
     revalidatePath(`/admin/courses/${courseId}`);
     return { success: true, lesson };
   } catch (error) {
-    console.error("[CREATE_LESSON_ERROR]:", error);
-    return { error: "Error interno al crear lección" };
+    return { error: "Error al crear lección" };
   }
 }
 
-// ACTUALIZAR LECCIÓN (Incluye video y contenido)
-export async function updateLesson(
-  lessonId: string, 
-  courseId: string, 
-  values: { title: string; videoUrl?: string; content?: string }
-) {
+// ACTUALIZAR LECCIÓN
+export async function updateLesson(lessonId: string, courseId: string, values: { title: string; videoUrl?: string; content?: string }) {
   try {
     await db.lesson.update({
       where: { id: lessonId },
@@ -147,15 +119,14 @@ export async function updateLesson(
         content: values.content || null
       }
     });
-    
     revalidatePath(`/admin/courses/${courseId}`);
     return { success: true };
   } catch (error) {
-    console.error("[UPDATE_LESSON_ERROR]:", error);
     return { error: "Error al actualizar lección" };
   }
 }
 
+// ACTUALIZAR TITULO MÓDULO
 export async function updateModuleTitle(moduleId: string, courseId: string, title: string) {
   try {
     await db.module.update({
@@ -169,7 +140,7 @@ export async function updateModuleTitle(moduleId: string, courseId: string, titl
   }
 }
 
-// ACTUALIZAR TÍTULO DE LECCIÓN
+// ACTUALIZAR TITULO LECCIÓN
 export async function updateLessonTitle(lessonId: string, courseId: string, title: string) {
   try {
     await db.lesson.update({

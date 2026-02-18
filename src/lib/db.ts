@@ -1,9 +1,14 @@
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient } from "@prisma/client";
 
-declare global {
-  var prisma: PrismaClient | undefined
-}
+// Esto evita que VS Code se queje de la variable global
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
-export const db = globalThis.prisma || new PrismaClient()
+export const db =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+  });
 
-if (process.env.NODE_ENV !== "production") globalThis.prisma = db
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
