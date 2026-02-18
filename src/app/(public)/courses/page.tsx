@@ -50,7 +50,7 @@ export default async function CoursesPage() {
               const lessonsCount = course.modules.flatMap(m => m.lessons).length;
               
               return (
-                <Link key={course.id} href={`/course/${course.slug}`} className="group">
+                <Link key={course.id} href={`/courses/${course.slug}`} className="group">
                   <div className="bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] overflow-hidden transition-all duration-500 hover:border-primary/50 hover:-translate-y-2 h-full flex flex-col">
                     
                     {/* Imagen del Curso */}
